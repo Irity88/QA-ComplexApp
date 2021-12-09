@@ -1,21 +1,36 @@
 """Stores tests related to start page"""
+import logging
 import random
-from time import sleep
 
+import pytest
 from selenium.webdriver.chrome import webdriver
-from selenium.webdriver.common.by import By
+
+from constants.base import BaseConstants
+from pages.start_page import StartPage
 
 
-class TestStartPage:
+class TestStartPage():
 
-    def random_num(self):
+    @staticmethod
+    def random_num():
         """Generate random number"""
         return str(random.choice(range(11111, 99999)))
 
-    # Создать тест (поглядывая на имеющийся) который проверяет ошибку при логине с инвалидным паролем и логином.
-    # (Проверка таже, добавляется только заполнение полей)
-    # test
-    def test_valid_login(self):
+    @pytest.fixture(scope="function")
+    def driver(self):
+        """Create and return driver, close after test"""
+        driver = webdriver.WebDriver(BaseConstants.DRIVER_PATH)
+        yield driver
+        driver.close()
+
+    @pytest.fixture(scope="function")
+    def start_page(self, driver):
+        """Return start page object"""
+        driver.get(BaseConstants.URL)
+        return StartPage(driver)
+
+    def test_valid_login(self, start_page):
+        self.log = logging.getLogger(__name__)
         """
         - Create driver
         - Open start page
@@ -27,34 +42,14 @@ class TestStartPage:
         - Click on Sign In button
         - Verify approve message
         """
-        # Create driver
-        driver = webdriver.WebDriver(executable_path="./drivers/chromedriver.exe")
-        # Open start page
-        driver.get("https://qa-complex-app-for-testing.herokuapp.com/")
-        # Find and clean Username field
-        username = driver.find_element(by=By.XPATH, value="//input[@id='username-register']")
-        username.clear()
-        username.send_keys(f"itymc{self.random_num()}")
-        # Find and clean Password field
-        password = driver.find_element(by=By.XPATH, value="//input[@id='password-register']")
-        password.clear()
-        password.send_keys(f"itymcPwd{self.random_num()}")
-        # Find and clear e-mail field
-        email = driver.find_element(by=By.XPATH, value="//input[@id='email-register']")
-        email.clear()
-        email.send_keys(f"itymc{self.random_num()}@ukr.net")
-        # Find Sign In button
-        button = driver.find_element(by=By.XPATH, value=".//button[text()='Sign up for OurApp']")
-        # Click button
-        sleep(3)
-        button.click()
-        # # Find approve message
-        message = driver.find_element(by=By.XPATH, value=".//h2")
-        # # Verify message
-        assert "itymc" in message.text
-        # Find Sign Out button
-        button_sign_out = driver.find_element(by=By.XPATH, value=".//button[text()='Sign Out']")
-        # Click button
-        sleep(3)
-        button_sign_out.click()
-        sleep(3)
+        # fill fields
+        username_value = f"itymc{self.random_num()}"
+        password_value = f"itymcPwd{self.random_num()}"
+        email_value = f"itymc{self.random_num()}@ukr.net"
+        main_page = start_page.register_user(username_value, password_value, email_value)
+        # verify approve message
+
+        main_page.verify_correct_login(username_value)
+        self.log.info("Fields are filled")
+
+        main_page.sign_out()
